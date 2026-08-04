@@ -1,0 +1,450 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Battery Series & Parallel Configurator & Wire Size Calculator</title>
+  <meta name="description" content="Calculate total voltage, capacity (Ah), energy (Wh), and recommended cable wire gauge (AWG/mm²) for battery series and parallel configurations.">
+  
+  <!-- Tailwind CSS via CDN -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  
+  <style>
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, "SF Pro Text", "SF Pro Display", "Helvetica Neue", Helvetica, Arial, sans-serif;
+      -webkit-font-smoothing: antialiased;
+      -moz-osx-font-smoothing: grayscale;
+    }
+    
+    /* Custom subtle glow & transitions */
+    .apple-card {
+      background: rgba(255, 255, 255, 0.85);
+      backdrop-filter: blur(20px);
+      -webkit-backdrop-filter: blur(20px);
+    }
+    
+    input::-webkit-outer-spin-button,
+    input::-webkit-inner-spin-button {
+      -webkit-appearance: none;
+      margin: 0;
+    }
+    input[type=number] {
+      -moz-appearance: textfield;
+    }
+  </style>
+</head>
+<body class="bg-[#f5f5f7] text-[#1d1d1f] min-h-screen flex flex-col justify-between selection:bg-[#0071e3] selection:text-white">
+
+  <!-- Main Container -->
+  <div class="max-w-5xl mx-auto w-full px-4 sm:px-6 py-10 my-auto">
+    
+    <!-- Header -->
+    <header class="text-center mb-10">
+      <div class="inline-flex items-center justify-center w-14 h-14 rounded-2xl bg-white border border-black/5 shadow-sm mb-4 text-[#0071e3]">
+        <svg class="w-7 h-7" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.8" d="M13 10V3L4 14h7v7l9-11h-7z" />
+        </svg>
+      </div>
+      <h1 class="text-3xl sm:text-4xl font-semibold tracking-tight text-[#1d1d1f]">
+        Battery Series & Parallel Configurator
+      </h1>
+      <p class="text-base text-[#86868b] mt-2 max-w-xl mx-auto font-normal">
+        Professional pack sizing, total energy output, and wire gauge recommendations for marine, off-grid, and industrial DC systems.
+      </p>
+    </header>
+
+    <!-- Grid Layout -->
+    <div class="grid grid-cols-1 lg:grid-cols-12 gap-8 items-start">
+      
+      <!-- Input Controls (Left Column) -->
+      <section class="lg:col-span-5 bg-white border border-black/5 rounded-3xl p-6 sm:p-8 shadow-sm space-y-6">
+        <h2 class="text-lg font-semibold tracking-tight text-[#1d1d1f] border-b border-gray-100 pb-3 flex items-center justify-between">
+          <span>Cell Parameters</span>
+          <span class="text-xs font-normal text-[#86868b] uppercase tracking-wider">Step 1</span>
+        </h2>
+
+        <!-- Cell Voltage Choice -->
+        <div>
+          <label class="block text-xs font-semibold text-[#86868b] uppercase tracking-wider mb-2">
+            Cell Voltage (V)
+          </label>
+          <div class="space-y-3">
+            <select 
+              id="voltagePreset" 
+              class="w-full bg-[#f5f5f7] border border-transparent focus:border-[#0071e3] focus:bg-white text-[#1d1d1f] text-sm rounded-xl px-4 py-3 outline-none transition-all duration-200 cursor-pointer"
+              onchange="handleVoltagePresetChange()"
+            >
+              <option value="3.2" selected>3.2 V — LiFePO4 (Standard Lithium)</option>
+              <option value="3.7">3.7 V — Li-ion / NMC</option>
+              <option value="12">12.0 V — Lead-Acid / AGM / Sealed Pack</option>
+              <option value="custom">Custom Voltage...</option>
+            </select>
+            
+            <!-- Custom Voltage Input (Hidden by default) -->
+            <div id="customVoltageWrapper" class="hidden">
+              <div class="relative">
+                <input 
+                  type="number" 
+                  id="customVoltage" 
+                  step="0.1" 
+                  min="0.1" 
+                  placeholder="Enter custom voltage" 
+                  class="w-full bg-[#f5f5f7] border border-transparent focus:border-[#0071e3] focus:bg-white text-[#1d1d1f] text-sm rounded-xl px-4 py-3 outline-none transition-all duration-200"
+                  oninput="calculate()"
+                >
+                <span class="absolute right-4 top-1/2 -translate-y-1/2 text-xs font-medium text-[#86868b]">V</span>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Cell Capacity -->
+        <div>
+          <label class="block text-xs font-semibold text-[#86868b] uppercase tracking-wider mb-2">
+            Individual Cell Capacity (Ah)
+          </label>
+          <div class="relative">
+            <input 
+              type="number" 
+              id="capacity" 
+              value="100" 
+              min="1" 
+              placeholder="100" 
+              class="w-full bg-[#f5f5f7] border border-transparent focus:border-[#0071e3] focus:bg-white text-[#1d1d1f] text-sm rounded-xl px-4 py-3 outline-none transition-all duration-200"
+              oninput="calculate()"
+            >
+            <span class="absolute right-4 top-1/2 -translate-y-1/2 text-xs font-medium text-[#86868b]">Ah</span>
+          </div>
+        </div>
+
+        <!-- Series (S) and Parallel (P) Inputs -->
+        <div class="grid grid-cols-2 gap-4">
+          <div>
+            <label class="block text-xs font-semibold text-[#86868b] uppercase tracking-wider mb-2">
+              Series Count (S)
+            </label>
+            <div class="relative">
+              <input 
+                type="number" 
+                id="seriesCount" 
+                value="4" 
+                min="1" 
+                placeholder="4" 
+                class="w-full bg-[#f5f5f7] border border-transparent focus:border-[#0071e3] focus:bg-white text-[#1d1d1f] text-sm rounded-xl px-4 py-3 outline-none transition-all duration-200"
+                oninput="calculate()"
+              >
+              <span class="absolute right-4 top-1/2 -translate-y-1/2 text-xs font-medium text-[#86868b]">Series</span>
+            </div>
+          </div>
+
+          <div>
+            <label class="block text-xs font-semibold text-[#86868b] uppercase tracking-wider mb-2">
+              Parallel Count (P)
+            </label>
+            <div class="relative">
+              <input 
+                type="number" 
+                id="parallelCount" 
+                value="1" 
+                min="1" 
+                placeholder="1" 
+                class="w-full bg-[#f5f5f7] border border-transparent focus:border-[#0071e3] focus:bg-white text-[#1d1d1f] text-sm rounded-xl px-4 py-3 outline-none transition-all duration-200"
+                oninput="calculate()"
+              >
+              <span class="absolute right-4 top-1/2 -translate-y-1/2 text-xs font-medium text-[#86868b]">Parallel</span>
+            </div>
+          </div>
+        </div>
+
+        <!-- Max Continuous Discharge Current -->
+        <div>
+          <label class="block text-xs font-semibold text-[#86868b] uppercase tracking-wider mb-2">
+            Max Continuous Current (A)
+          </label>
+          <div class="relative">
+            <input 
+              type="number" 
+              id="maxCurrent" 
+              value="50" 
+              min="0.1" 
+              placeholder="50" 
+              class="w-full bg-[#f5f5f7] border border-transparent focus:border-[#0071e3] focus:bg-white text-[#1d1d1f] text-sm rounded-xl px-4 py-3 outline-none transition-all duration-200"
+              oninput="calculate()"
+            >
+            <span class="absolute right-4 top-1/2 -translate-y-1/2 text-xs font-medium text-[#86868b]">A</span>
+          </div>
+        </div>
+      </section>
+
+      <!-- Output & Engineering Cards (Right Column) -->
+      <div class="lg:col-span-7 space-y-6">
+        
+        <!-- Key Metrics Cards Grid -->
+        <section class="bg-white border border-black/5 rounded-3xl p-6 sm:p-8 shadow-sm">
+          <div class="flex items-center justify-between border-b border-gray-100 pb-3 mb-6">
+            <h2 class="text-lg font-semibold tracking-tight text-[#1d1d1f]">System Summary</h2>
+            <span id="configTag" class="text-xs font-semibold px-3 py-1 bg-[#0071e3]/10 text-[#0071e3] rounded-full">
+              4S1P Pack Configuration
+            </span>
+          </div>
+
+          <div class="grid grid-cols-2 sm:grid-cols-3 gap-4">
+            
+            <!-- Voltage -->
+            <div class="bg-[#f5f5f7] p-4 rounded-2xl">
+              <span class="text-xs font-medium text-[#86868b] uppercase tracking-wider block mb-1">Nominal Voltage</span>
+              <div class="text-2xl sm:text-3xl font-semibold tracking-tight text-[#1d1d1f]">
+                <span id="totalVoltage">12.8</span><span class="text-base font-normal text-[#86868b] ml-1">V</span>
+              </div>
+            </div>
+
+            <!-- Capacity -->
+            <div class="bg-[#f5f5f7] p-4 rounded-2xl">
+              <span class="text-xs font-medium text-[#86868b] uppercase tracking-wider block mb-1">Total Capacity</span>
+              <div class="text-2xl sm:text-3xl font-semibold tracking-tight text-[#1d1d1f]">
+                <span id="totalCapacity">100</span><span class="text-base font-normal text-[#86868b] ml-1">Ah</span>
+              </div>
+            </div>
+
+            <!-- Energy -->
+            <div class="bg-[#f5f5f7] p-4 rounded-2xl col-span-2 sm:col-span-1">
+              <span class="text-xs font-medium text-[#86868b] uppercase tracking-wider block mb-1">Total Energy</span>
+              <div class="text-2xl sm:text-3xl font-semibold tracking-tight text-[#1d1d1f]">
+                <span id="totalEnergy">1.28</span><span id="energyUnit" class="text-base font-normal text-[#86868b] ml-1">kWh</span>
+              </div>
+            </div>
+
+          </div>
+
+          <!-- Recommended Wire Size Highlight Box -->
+          <div class="mt-6 p-5 rounded-2xl bg-gradient-to-br from-[#0071e3]/5 to-[#0071e3]/10 border border-[#0071e3]/20 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+            <div>
+              <span class="text-xs font-semibold text-[#0071e3] uppercase tracking-wider block mb-1">
+                Recommended Cable Gauge
+              </span>
+              <p class="text-xs text-[#86868b]">
+                Based on continuous discharge current &amp; standard marine/industrial safety ampacity.
+              </p>
+            </div>
+            <div class="text-left sm:text-right">
+              <div id="wireGaugeDisplay" class="text-xl sm:text-2xl font-bold text-[#0071e3]">
+                8 AWG / 10 mm²
+              </div>
+              <span id="cRateBadge" class="text-[11px] font-medium text-[#86868b]">
+                C-Rate: 0.50C
+              </span>
+            </div>
+          </div>
+        </section>
+
+        <!-- Dynamic Engineering Insights Card -->
+        <section class="bg-white border border-black/5 rounded-3xl p-6 sm:p-8 shadow-sm">
+          <h2 class="text-lg font-semibold tracking-tight text-[#1d1d1f] border-b border-gray-100 pb-3 mb-4 flex items-center gap-2">
+            <svg class="w-5 h-5 text-[#0071e3]" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+            </svg>
+            Engineering Insights &amp; Safety Tips
+          </h2>
+
+          <div id="insightsContainer" class="space-y-3 text-xs leading-relaxed">
+            <!-- Dynamic alerts will populate here -->
+          </div>
+        </section>
+
+      </div>
+
+    </div>
+
+  </div>
+
+  <!-- Footer Disclaimer -->
+  <footer class="text-center py-8 px-4 border-t border-black/5 mt-10">
+    <p class="text-xs text-[#86868b] max-w-2xl mx-auto leading-relaxed">
+      <strong>Disclaimer:</strong> This tool provides preliminary engineering estimations for reference only. Always consult certified marine electricians and official component datasheets for final system installation.
+    </p>
+  </footer>
+
+  <!-- Interactive JavaScript Logic -->
+  <script>
+    function getCellVoltage() {
+      const preset = document.getElementById('voltagePreset').value;
+      if (preset === 'custom') {
+        const customVal = parseFloat(document.getElementById('customVoltage').value);
+        return isNaN(customVal) || customVal <= 0 ? 0 : customVal;
+      }
+      return parseFloat(preset);
+    }
+
+    function handleVoltagePresetChange() {
+      const preset = document.getElementById('voltagePreset').value;
+      const customWrapper = document.getElementById('customVoltageWrapper');
+      
+      if (preset === 'custom') {
+        customWrapper.classList.remove('hidden');
+      } else {
+        customWrapper.classList.add('hidden');
+      }
+      calculate();
+    }
+
+    function getWireGauge(current) {
+      if (current <= 0) return "N/A";
+      if (current <= 15) return "14 AWG / 2.5 mm²";
+      if (current <= 20) return "12 AWG / 4 mm²";
+      if (current <= 30) return "10 AWG / 6 mm²";
+      if (current <= 55) return "8 AWG / 10 mm²";
+      if (current <= 75) return "6 AWG / 16 mm²";
+      if (current <= 95) return "4 AWG / 25 mm²";
+      if (current <= 130) return "2 AWG / 35 mm²";
+      if (current <= 150) return "1 AWG / 50 mm²";
+      if (current <= 195) return "1/0 AWG / 55 mm²";
+      if (current <= 225) return "2/0 AWG / 70 mm²";
+      if (current <= 260) return "3/0 AWG / 85 mm²";
+      if (current <= 300) return "4/0 AWG / 107 mm²";
+      if (current <= 360) return "250 MCM / 120 mm²";
+      if (current <= 420) return "350 MCM / 185 mm²";
+      return "Parallel Runs / >350 MCM (Consult ABYC Standards)";
+    }
+
+    function calculate() {
+      const vCell = getCellVoltage();
+      const capacity = parseFloat(document.getElementById('capacity').value) || 0;
+      const s = parseInt(document.getElementById('seriesCount').value) || 0;
+      const p = parseInt(document.getElementById('parallelCount').value) || 0;
+      const maxCurrent = parseFloat(document.getElementById('maxCurrent').value) || 0;
+
+      // HTML Elements
+      const totalVoltageElem = document.getElementById('totalVoltage');
+      const totalCapacityElem = document.getElementById('totalCapacity');
+      const totalEnergyElem = document.getElementById('totalEnergy');
+      const energyUnitElem = document.getElementById('energyUnit');
+      const configTagElem = document.getElementById('configTag');
+      const wireGaugeElem = document.getElementById('wireGaugeDisplay');
+      const cRateBadgeElem = document.getElementById('cRateBadge');
+      const insightsContainer = document.getElementById('insightsContainer');
+
+      // Validation check
+      if (vCell <= 0 || capacity <= 0 || s <= 0 || p <= 0) {
+        totalVoltageElem.textContent = "0.0";
+        totalCapacityElem.textContent = "0";
+        totalEnergyElem.textContent = "0.0";
+        wireGaugeElem.textContent = "N/A";
+        configTagElem.textContent = "Invalid Pack Configuration";
+        insightsContainer.innerHTML = `<div class="p-3 rounded-xl bg-red-50 text-red-700 font-medium">Please enter valid positive numerical inputs for all fields.</div>`;
+        return;
+      }
+
+      // Calculations
+      const totalVoltage = vCell * s;
+      const totalCapacity = capacity * p;
+      const totalEnergyWh = totalVoltage * totalCapacity;
+      const cRate = totalCapacity > 0 ? (maxCurrent / totalCapacity) : 0;
+      const wireGauge = getWireGauge(maxCurrent);
+
+      // Render Primary Outputs
+      configTagElem.textContent = `${s}S${p}P Pack Configuration`;
+      totalVoltageElem.textContent = totalVoltage.toFixed(1);
+      totalCapacityElem.textContent = totalCapacity.toLocaleString();
+
+      if (totalEnergyWh >= 1000) {
+        totalEnergyElem.textContent = (totalEnergyWh / 1000).toFixed(2);
+        energyUnitElem.textContent = "kWh";
+      } else {
+        totalEnergyElem.textContent = Math.round(totalEnergyWh).toLocaleString();
+        energyUnitElem.textContent = "Wh";
+      }
+
+      wireGaugeElem.textContent = wireGauge;
+      cRateBadgeElem.textContent = `C-Rate: ${cRate.toFixed(2)}C`;
+
+      // Render Dynamic Engineering Insights
+      let insightsHTML = '';
+
+      // Insight 1: Series Balancing Notice
+      if (s > 1) {
+        insightsHTML += `
+          <div class="p-3.5 rounded-xl bg-[#f5f5f7] border border-black/5 flex items-start gap-3">
+            <span class="text-amber-500 font-bold text-base leading-none mt-0.5">•</span>
+            <div>
+              <strong class="font-semibold text-[#1d1d1f]">Series Top-Balancing Required:</strong> 
+              <span>Ensure all cells are individual voltage-balanced (Top Balanced) to the exact same potential before connecting in series (${s}S) to prevent premature BMS cutoff or cell thermal runaways.</span>
+            </div>
+          </div>
+        `;
+      } else {
+        insightsHTML += `
+          <div class="p-3.5 rounded-xl bg-[#f5f5f7] border border-black/5 flex items-start gap-3">
+            <span class="text-blue-500 font-bold text-base leading-none mt-0.5">•</span>
+            <div>
+              <strong class="font-semibold text-[#1d1d1f]">Single Series Cell (1S):</strong> 
+              <span>No series voltage-balancing required between cells, but parallel busbar sizing must remain uniform.</span>
+            </div>
+          </div>
+        `;
+      }
+
+      // Insight 2: Voltage Level Safety Notice
+      if (totalVoltage >= 48) {
+        insightsHTML += `
+          <div class="p-3.5 rounded-xl bg-amber-50 border border-amber-200/60 text-amber-900 flex items-start gap-3">
+            <span class="text-amber-600 font-bold text-base leading-none mt-0.5">⚠️</span>
+            <div>
+              <strong class="font-semibold">High-Voltage System Notice (≥48V DC):</strong> 
+              <span>System DC voltage triggers elevated arc-flash hazards. Always install fast-acting Class T fuses, heavy-duty DC circuit breakers, and use insulated hand tools during setup.</span>
+            </div>
+          </div>
+        `;
+      } else {
+        insightsHTML += `
+          <div class="p-3.5 rounded-xl bg-[#f5f5f7] border border-black/5 flex items-start gap-3">
+            <span class="text-emerald-500 font-bold text-base leading-none mt-0.5">•</span>
+            <div>
+              <strong class="font-semibold text-[#1d1d1f]">Extra-Low Voltage Range (<48V DC):</strong> 
+              <span>Operates within safer DC voltage limits. standard ANL or MRBF fuses are typically adequate for circuit protection.</span>
+            </div>
+          </div>
+        `;
+      }
+
+      // Insight 3: C-Rate Warning
+      if (cRate > 1.0) {
+        insightsHTML += `
+          <div class="p-3.5 rounded-xl bg-red-50 border border-red-200/60 text-red-900 flex items-start gap-3">
+            <span class="text-red-600 font-bold text-base leading-none mt-0.5">🔥</span>
+            <div>
+              <strong class="font-semibold">High C-Rate Warning (${cRate.toFixed(2)}C > 1.0C):</strong> 
+              <span>Discharging continuously above 1C generates substantial internal heat and shortens cell cycle life. Verify that cell datasheets and your Battery Management System (BMS) support this high continuous rate.</span>
+            </div>
+          </div>
+        `;
+      } else if (cRate <= 0.5) {
+        insightsHTML += `
+          <div class="p-3.5 rounded-xl bg-[#f5f5f7] border border-black/5 flex items-start gap-3">
+            <span class="text-emerald-500 font-bold text-base leading-none mt-0.5">•</span>
+            <div>
+              <strong class="font-semibold text-[#1d1d1f]">Optimal Discharge Rate (${cRate.toFixed(2)}C):</strong> 
+              <span>Current rate is well within conservative limits (&le;0.5C), promoting maximum battery longevity, low temperature rise, and high discharge efficiency.</span>
+            </div>
+          </div>
+        `;
+      } else {
+        insightsHTML += `
+          <div class="p-3.5 rounded-xl bg-[#f5f5f7] border border-black/5 flex items-start gap-3">
+            <span class="text-blue-500 font-bold text-base leading-none mt-0.5">•</span>
+            <div>
+              <strong class="font-semibold text-[#1d1d1f]">Moderate Discharge Rate (${cRate.toFixed(2)}C):</strong> 
+              <span>Acceptable continuous load for high-quality lithium iron phosphate (LiFePO4) or NMC industrial cells.</span>
+            </div>
+          </div>
+        `;
+      }
+
+      insightsContainer.innerHTML = insightsHTML;
+    }
+
+    // Initial calculation on page load
+    document.addEventListener('DOMContentLoaded', calculate);
+  </script>
+
+</body>
+</html>
